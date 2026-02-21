@@ -15,17 +15,17 @@ export default function Home() {
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Tech Startup Founder",
+      name: "Rosalid Mutitu",
+      role: "Martinew Tech Founder",
       text: "Emmanuel's ability to explain complex edge computing concepts in simple terms is unmatched. Our blog engagement doubled after his first article!"
     },
     {
-      name: "David Chen",
+      name: "Dr Kombo Mruu",
       role: "Health & Wellness Coach",
       text: "The article on the gut-brain axis was exactly what my audience needed. Professional, well-researched, and delivered ahead of schedule."
     },
     {
-      name: "Elena Rodriguez",
+      name: "Philip Kanyemi",
       role: "Lifestyle Magazine Editor",
       text: "A truly gifted writer. Emmanuel brings a unique perspective to every piece, making even the most common topics feel fresh and engaging."
     }
