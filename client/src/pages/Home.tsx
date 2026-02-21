@@ -1,11 +1,69 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BookOpen, Heart, Zap, Mail, Linkedin, Quote } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, BookOpen, Heart, Zap, Mail, Linkedin, Quote, Star, Send, ThumbsUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+// These will be replaced by environment variables in Netlify
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function Home() {
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
+  const [likes, setLikes] = useState<Record<string, number>>({ tech: 0, lifestyle: 0, health: 0 });
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newReview, setNewReview] = useState({ name: '', comment: '', rating: 5 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch initial data
+  useEffect(() => {
+    if (supabaseUrl && supabaseAnonKey) {
+      fetchLikes();
+      fetchReviews();
+    }
+  }, []);
+
+  const fetchLikes = async () => {
+    const { data } = await supabase.from('likes').select('*');
+    if (data) {
+      const likesMap = data.reduce((acc: any, item: any) => {
+        acc[item.id] = item.count;
+        return acc;
+      }, {});
+      setLikes(likesMap);
+    }
+  };
+
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setReviews(data);
+  };
+
+  const handleLike = async (id: string) => {
+    const newCount = (likes[id] || 0) + 1;
+    setLikes({ ...likes, [id]: newCount });
+    await supabase.from('likes').update({ count: newCount }).eq('id', id);
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReview.name || !newReview.comment) return;
+    
+    setIsSubmitting(true);
+    const { error } = await supabase.from('reviews').insert([newReview]);
+    
+    if (!error) {
+      setNewReview({ name: '', comment: '', rating: 5 });
+      fetchReviews();
+    }
+    setIsSubmitting(false);
+  };
 
   const copyEmail = () => {
     navigator.clipboard.writeText("emmanuelgumo767@gmail.com");
@@ -25,7 +83,7 @@ export default function Home() {
       text: "The article on the gut-brain axis was exactly what my audience needed. Professional, well-researched, and delivered ahead of schedule."
     },
     {
-      name: "Philip Kanyemi",
+      name: "Phili Kanyemi",
       role: "Lifestyle Magazine Editor",
       text: "A truly gifted writer. Emmanuel brings a unique perspective to every piece, making even the most common topics feel fresh and engaging."
     }
@@ -122,14 +180,25 @@ export default function Home() {
                   <CardDescription className="text-gray-600 mb-4">
                     {article.description}
                   </CardDescription>
-                  <Button 
-                    variant="outline" 
-                    className="w-full group"
-                    onClick={() => setExpandedArticle(article.id)}
-                  >
-                    Read Full Article
-                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-grow group"
+                      onClick={() => setExpandedArticle(article.id)}
+                    >
+                      Read Full Article
+                      <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="text-pink-500 hover:bg-pink-50"
+                      onClick={() => handleLike(article.id)}
+                    >
+                      <Heart className={`w-5 h-5 ${likes[article.id] > 0 ? 'fill-current' : ''}`} />
+                      <span className="ml-1 text-xs font-bold">{likes[article.id] || 0}</span>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -240,6 +309,87 @@ export default function Home() {
                 ))}
               </ul>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Reviews Section */}
+      <section className="py-16 px-4 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 text-center">Visitor Reviews</h2>
+          
+          {/* Review Form */}
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-12">
+            <h3 className="text-xl font-bold mb-6">Leave a Review</h3>
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full p-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={newReview.name}
+                    onChange={(e) => setNewReview({...newReview, name: e.target.value})}
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                  <div className="flex gap-2 py-2">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button 
+                        key={num}
+                        type="button"
+                        onClick={() => setNewReview({...newReview, rating: num})}
+                        className={`p-1 transition-colors ${newReview.rating >= num ? 'text-yellow-400' : 'text-gray-300'}`}
+                      >
+                        <Star className="w-6 h-6 fill-current" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Your Comment</label>
+                <textarea 
+                  required
+                  rows={3}
+                  className="w-full p-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={newReview.comment}
+                  onChange={(e) => setNewReview({...newReview, comment: e.target.value})}
+                  placeholder="Tell me what you think about my work..."
+                />
+              </div>
+              <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto gap-2">
+                {isSubmitting ? "Submitting..." : "Post Review"}
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          </div>
+
+          {/* Reviews List */}
+          <div className="space-y-6">
+            {reviews.length === 0 ? (
+              <p className="text-center text-gray-500 italic">No reviews yet. Be the first to leave one!</p>
+            ) : (
+              reviews.map((review) => (
+                <div key={review.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-bold text-gray-900">{review.name}</div>
+                    <div className="flex text-yellow-400">
+                      {[...Array(review.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-current" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-600">{review.comment}</p>
+                  <div className="text-xs text-gray-400 mt-4">
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
